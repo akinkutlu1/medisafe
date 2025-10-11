@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import 'auth_wrapper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,15 +23,15 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     _welcomeMessage = _messages[DateTime.now().millisecondsSinceEpoch % _messages.length];
-    _navigateToLogin();
+    _navigateToAuthWrapper();
   }
 
-  _navigateToLogin() async {
+  _navigateToAuthWrapper() async {
     await Future.delayed(const Duration(seconds: 2), () {});
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
       );
     }
   }

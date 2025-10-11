@@ -66,13 +66,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text(
-                          'Oturumu kapat',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
+                      
                     ],
                   ),
                 ),
