@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'google_sign_in_screen.dart';
 import 'register_sceen.dart';
 import 'forgot_password_screen.dart';
-import 'manage_meds_screen.dart';
+import 'main_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +15,70 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _obscure = true;
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('E-posta ve şifre alanları boş olamaz')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const MainNavigationScreen(),
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Giriş yapılırken bir hata oluştu';
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı';
+          break;
+        case 'wrong-password':
+          message = 'Hatalı şifre';
+          break;
+        case 'invalid-email':
+          message = 'Geçersiz e-posta adresi';
+          break;
+        case 'user-disabled':
+          message = 'Bu hesap devre dışı bırakılmış';
+          break;
+        case 'too-many-requests':
+          message = 'Çok fazla başarısız giriş denemesi. Lütfen daha sonra tekrar deneyin';
+          break;
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Beklenmeyen bir hata oluştu')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,13 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ManageMedsScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
                       foregroundColor: Colors.white,
@@ -102,7 +160,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text('Giriş Yap'),
+                    child: _isLoading 
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('Giriş Yap'),
                   ),
                 ),
                 const SizedBox(height: 16),

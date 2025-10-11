@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class ManageMedsScreen extends StatelessWidget {
-  const ManageMedsScreen({super.key});
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,17 +18,6 @@ class ManageMedsScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             children: [
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _circleIcon(Icons.calendar_month),
-                  _circleIcon(Icons.emoji_emotions_outlined),
-                  _circleIcon(Icons.settings),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(height: 1, color: Colors.grey.shade200),
               const SizedBox(height: 32),
               Expanded(
                 child: SingleChildScrollView(
@@ -95,24 +84,4 @@ class ManageMedsScreen extends StatelessWidget {
     );
   }
 
-  Widget _circleIcon(IconData icon) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(icon, color: Colors.grey.shade700),
-    );
-  }
 }
-
-
