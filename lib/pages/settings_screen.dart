@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'login_screen.dart';
+import '../providers/theme_provider.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -16,8 +20,9 @@ class SettingsScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Çıkış yapılırken bir hata oluştu')),
+          SnackBar(content: Text(localizations.errorSigningOut)),
         );
       }
     }
@@ -27,20 +32,21 @@ class SettingsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final localizations = AppLocalizations.of(context)!;
         return AlertDialog(
-          title: const Text('Çıkış Yap'),
-          content: const Text('Hesabınızdan çıkmak istediğinizden emin misiniz?'),
+          title: Text(localizations.signOut),
+          content: Text(localizations.signOutConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('İptal'),
+              child: Text(localizations.cancel),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 _signOut(context);
               },
-              child: const Text('Çıkış Yap'),
+              child: Text(localizations.signOut),
             ),
           ],
         );
@@ -48,169 +54,296 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final Color primaryBlue = const Color(0xFF1E66A6);
-    final User? user = FirebaseAuth.instance.currentUser;
+  void _showThemeDialog(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'Ayarlar',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: primaryBlue,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(localizations.theme),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 20),
-              // Hesap Bilgileri Bölümü
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.person, color: primaryBlue, size: 24),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Hesap Bilgileri',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: primaryBlue,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (user != null) ...[
-                      _buildInfoRow('E-posta', user.email ?? 'Bilinmiyor'),
-                      const SizedBox(height: 12),
-                      _buildInfoRow('Kullanıcı ID', user.uid),
-                      const SizedBox(height: 12),
-                      _buildInfoRow('Hesap Oluşturulma', 
-                        user.metadata.creationTime?.toString().split(' ')[0] ?? 'Bilinmiyor'),
-                    ] else ...[
-                      const Text('Kullanıcı bilgileri yükleniyor...'),
-                    ],
-                  ],
-                ),
+              ListTile(
+                leading: const Icon(Icons.brightness_7),
+                title: Text(localizations.lightTheme),
+                trailing: themeProvider.themeMode == AppThemeMode.light
+                    ? const Icon(Icons.check, color: Colors.blue)
+                    : null,
+                onTap: () {
+                  themeProvider.setThemeMode(AppThemeMode.light);
+                  Navigator.pop(context);
+                },
               ),
-              const SizedBox(height: 24),
-              // Çıkış Yap Butonu
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showSignOutDialog(context),
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                  label: const Text(
-                    'Oturumu Kapat',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
+              ListTile(
+                leading: const Icon(Icons.brightness_2),
+                title: Text(localizations.darkTheme),
+                trailing: themeProvider.themeMode == AppThemeMode.dark
+                    ? const Icon(Icons.check, color: Colors.blue)
+                    : null,
+                onTap: () {
+                  themeProvider.setThemeMode(AppThemeMode.dark);
+                  Navigator.pop(context);
+                },
               ),
-              const SizedBox(height: 20),
-              // Uygulama Bilgileri
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.medication,
-                      size: 48,
-                      color: primaryBlue,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'MediSafe',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: primaryBlue,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'İlaç hatırlatma uygulaması',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
+              ListTile(
+                leading: const Icon(Icons.brightness_auto),
+                title: Text(localizations.systemTheme),
+                trailing: themeProvider.themeMode == AppThemeMode.system
+                    ? const Icon(Icons.check, color: Colors.blue)
+                    : null,
+                onTap: () {
+                  themeProvider.setThemeMode(AppThemeMode.system);
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(localizations.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(localizations.language),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: localeProvider.supportedLocales.map((locale) {
+              String languageName;
+              switch (locale.languageCode) {
+                case 'tr':
+                  languageName = localizations.turkish;
+                  break;
+                case 'en':
+                  languageName = localizations.english;
+                  break;
+                default:
+                  languageName = locale.languageCode;
+              }
+
+              return ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(languageName),
+                trailing: localeProvider.locale.languageCode == locale.languageCode
+                    ? const Icon(Icons.check, color: Colors.blue)
+                    : null,
+                onTap: () {
+                  localeProvider.setLocale(locale);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(localizations.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getThemeSubtitle(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final localizations = AppLocalizations.of(context)!;
+
+    switch (themeProvider.themeMode) {
+      case AppThemeMode.light:
+        return localizations.lightTheme;
+      case AppThemeMode.dark:
+        return localizations.darkTheme;
+      case AppThemeMode.system:
+        return localizations.systemTheme;
+    }
+  }
+
+  String _getLanguageSubtitle(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    final localizations = AppLocalizations.of(context)!;
+
+    switch (localeProvider.locale.languageCode) {
+      case 'tr':
+        return localizations.turkish;
+      case 'en':
+        return localizations.english;
+      default:
+        return localeProvider.locale.languageCode;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color primaryBlue = Theme.of(context).primaryColor;
+    final User? user = FirebaseAuth.instance.currentUser;
+    final localizations = AppLocalizations.of(context)!;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(localizations.settings),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 20),
+                    // Profil Kartı
+                    _GradientCard(
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.person, color: primaryBlue, size: 32),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user?.email ?? localizations.guest,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  user != null ? 'ID: ${user.uid.substring(0, 8)}...' : localizations.notLoggedIn,
+                                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    _SettingsTile(
+                      icon: Icons.color_lens,
+                      title: localizations.theme,
+                      subtitle: _getThemeSubtitle(context),
+                      onTap: () => _showThemeDialog(context),
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.language,
+                      title: localizations.language,
+                      subtitle: _getLanguageSubtitle(context),
+                      onTap: () => _showLanguageDialog(context),
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.info_outline,
+                      title: localizations.appAbout,
+                      subtitle: localizations.version,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showSignOutDialog(context),
+                        icon: const Icon(Icons.logout),
+                        label: Text(localizations.signOut),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            '$label:',
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
+
+
+  // Alarm sesi seçimi ayrı sayfaya taşındı
+
+}
+
+class _GradientCard extends StatelessWidget {
+  const _GradientCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E66A6), Color(0xFF4AA3F2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      ],
+      ),
+      child: child,
     );
   }
+}
 
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xFF1E66A6).withOpacity(0.1),
+          child: Icon(icon, color: const Color(0xFF1E66A6)),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: subtitle != null ? Text(subtitle!) : null,
+        trailing: trailing,
+        onTap: onTap,
+      ),
+    );
+  }
 }

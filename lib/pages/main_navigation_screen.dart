@@ -3,6 +3,9 @@ import 'home_screen.dart';
 import 'history_screen.dart';
 import 'healthy_living_screen.dart';
 import 'settings_screen.dart';
+import '../services/background_permission_service.dart';
+import '../services/notification_service.dart';
+import '../l10n/app_localizations.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -21,12 +24,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const SettingsScreen(),
   ];
 
-  final List<String> _labels = [
-    'Alarmlar',
-    'Geçmiş',
-    'Sağlıklı Yaşam',
-    'Ayarlar',
-  ];
+  List<String> _getLabels(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    return [
+      localizations!.medicines,
+      localizations!.history,
+      localizations!.healthyLiving,
+      localizations!.settings,
+    ];
+  }
 
   final List<IconData> _icons = [
     Icons.alarm,
@@ -34,6 +40,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     Icons.favorite,
     Icons.settings,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Uygulama açıldığında izinleri kontrol et ve pending alarm'ları kontrol et
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        BackgroundPermissionService.instance.checkAndRequestPermissions(context);
+        // Pending alarm varsa alarm ekranını aç
+        await NotificationService.instance.checkAndOpenPendingAlarms();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +67,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         items: _icons.asMap().entries.map((entry) {
           final index = entry.key;
           final icon = entry.value;
+          final labels = _getLabels(context);
           return BottomNavigationBarItem(
             icon: Icon(icon),
-            label: _labels[index],
+            label: labels[index],
           );
         }).toList(),
       ),

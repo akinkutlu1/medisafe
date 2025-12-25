@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth_wrapper.dart';
+import '../services/notification_service.dart';
+import '../l10n/app_localizations.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,24 +13,28 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   late String _welcomeMessage;
 
-  final List<String> _messages = [
-    "İlaçlarını zamanında al, sağlığını koru.",
-    "Sağlığın için buradayız.",
-    "İlacını unutma, hayatını kolaylaştır.",
-    "Sağlıklı bir yaşam,\n zamanında alınan ilaçla başlar.",
-    "Her dozda sağlık, her bildirimde huzur."
-  ];
-
   @override
   void initState() {
     super.initState();
-    _welcomeMessage = _messages[DateTime.now().millisecondsSinceEpoch % _messages.length];
     _navigateToAuthWrapper();
+  }
+
+  List<String> _getLocalizedMessages(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    return [
+      localizations.splashMessage1,
+      localizations.splashMessage2,
+      localizations.splashMessage3,
+      localizations.splashMessage4,
+      localizations.splashMessage5,
+    ];
   }
 
   _navigateToAuthWrapper() async {
     await Future.delayed(const Duration(seconds: 2), () {});
     if (mounted) {
+      // Uygulama kapalıyken açıldıysa payload'ı flush et
+      NotificationService.instance.flushPendingPayload();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const AuthWrapper()),
@@ -38,6 +44,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final messages = _getLocalizedMessages(context);
+    _welcomeMessage = messages[DateTime.now().millisecondsSinceEpoch % messages.length];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(

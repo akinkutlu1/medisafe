@@ -4,6 +4,7 @@ import 'google_sign_in_screen.dart';
 import 'register_sceen.dart';
 import 'forgot_password_screen.dart';
 import 'main_navigation_screen.dart';
+import '../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,9 +21,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
+    final localizations = AppLocalizations.of(context);
     if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('E-posta ve şifre alanları boş olamaz')),
+        SnackBar(content: Text('${localizations!.email} ve ${localizations!.password} alanları boş olamaz')),
       );
       return;
     }
@@ -34,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
@@ -43,13 +45,14 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      String message = 'Giriş yapılırken bir hata oluştu';
+      final localizations = AppLocalizations.of(context);
+      String message = localizations!.errorSigningOut;
       switch (e.code) {
         case 'user-not-found':
           message = 'Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı';
           break;
         case 'wrong-password':
-          message = 'Hatalı şifre';
+          message = 'Şifre hatalı';
           break;
         case 'invalid-email':
           message = 'Geçersiz e-posta adresi';
@@ -61,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
           message = 'Çok fazla başarısız giriş denemesi. Lütfen daha sonra tekrar deneyin';
           break;
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
@@ -160,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: _isLoading 
+                    child: _isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
