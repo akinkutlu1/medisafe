@@ -1049,6 +1049,24 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'{hours} saatte bir'**
   String everyXHours(int hours);
+
+  /// No description provided for @noAlarmsYet.
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz alarm yok. Hemen bir ilaç ekleyin!'**
+  String get noAlarmsYet;
+
+  /// No description provided for @allHistoryTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Geçmiş'**
+  String get allHistoryTitle;
+
+  /// No description provided for @historyNotFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçmiş bulunamadı'**
+  String get historyNotFound;
 }
 
 class _AppLocalizationsDelegate

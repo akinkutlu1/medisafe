@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/history_service.dart';
+import '../l10n/app_localizations.dart';
 
 class AllHistoryScreen extends StatelessWidget {
   const AllHistoryScreen({super.key});
@@ -9,9 +10,10 @@ class AllHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
+    final localizations = AppLocalizations.of(context);
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Giriş yapılmalı')),
+      return Scaffold(
+        body: Center(child: Text(localizations?.loginRequired ?? 'Login required')),
       );
     }
 
@@ -19,7 +21,7 @@ class AllHistoryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tüm Geçmiş'),
+        title: Text(localizations?.allHistoryTitle ?? 'All History'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -27,14 +29,14 @@ class AllHistoryScreen extends StatelessWidget {
           stream: historyService.watchAllHistory(),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return const Center(child: Text('Geçmiş yüklenemedi'));
+              return Center(child: Text(localizations?.historyLoadFailed ?? 'Failed to load history'));
             }
             if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
               return const Center(child: CircularProgressIndicator());
             }
             final entries = snapshot.data ?? const <HistoryEntry>[];
             if (entries.isEmpty) {
-              return const Center(child: Text('Geçmiş bulunamadı'));
+              return Center(child: Text(localizations?.historyNotFound ?? 'History not found'));
             }
             return ListView.builder(
               padding: const EdgeInsets.all(16),

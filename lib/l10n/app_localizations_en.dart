@@ -506,4 +506,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String everyXHours(int hours) {
     return 'Every $hours hours';
   }
+
+  @override
+  String get noAlarmsYet => 'No alarms yet. Add a medicine immediately!';
+
+  @override
+  String get allHistoryTitle => 'All History';
+
+  @override
+  String get historyNotFound => 'History not found';
 }

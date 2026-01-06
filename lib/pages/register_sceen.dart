@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'google_sign_in_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -182,43 +181,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         )
                       : const Text('Kaydol'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: Colors.grey.shade300)),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Text('Veya'),
-                    ),
-                    Expanded(child: Divider(color: Colors.grey.shade300)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const GoogleSignInScreen(),
-                        ),
-                      );
-                    },
-                    icon: Image.asset(
-                      'assets/images/google.png',
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (context, _, __) => const Icon(Icons.g_mobiledata),
-                    ),
-                    label: const Text('Google ile devam et'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

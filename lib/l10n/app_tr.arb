@@ -174,5 +174,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "noAlarmsYet": "Henüz alarm yok. Hemen bir ilaç ekleyin!",
+  "allHistoryTitle": "Tüm Geçmiş",
+  "historyNotFound": "Geçmiş bulunamadı"
 }

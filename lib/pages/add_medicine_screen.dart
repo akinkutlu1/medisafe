@@ -24,7 +24,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   String? _type;
-  bool _alarmOn = false;
+  bool _alarmOn = true; // Alarm her zaman açık
   String _regimen = 'Saatlik'; // Will be set to localized value in initState
   int? _intervalHours = 6; // null = test modu
   bool _mMorning = false;
@@ -152,9 +152,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     final DateTime now = DateTime.now();
     DateTime? firstReminder;
 
-    // Test modu aktifse (intervalHours null) 1 dakika sonrasına ayarla ve alarm'ı aç
+    // Test modu aktifse (intervalHours null) 1 dakika sonrasına ayarla
     if (_intervalHours == null && _regimen == localizations!.hourly) {
-      _alarmOn = true; // Test modu aktifken alarm'ı otomatik aç
       firstReminder = now.add(const Duration(minutes: 1));
     } else {
       firstReminder = _regimen == localizations!.hourly
@@ -185,8 +184,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
         .collection('medicines')
         .add(data)
         .then((doc) async {
-      // Schedule first notification if enabled and time selected
-      if (_alarmOn) {
+      // Schedule first notification if time selected
+      if (firstReminder != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(localizations!.settingUpAlarm)));
         try {
           await _scheduleReminders(
@@ -561,13 +560,6 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                     },
                   ),
                 ],
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  value: _alarmOn,
-                  onChanged: (v) => setState(() => _alarmOn = v),
-                  title: Text(localizations!.alarmEnabled),
-                  contentPadding: EdgeInsets.zero,
-                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,

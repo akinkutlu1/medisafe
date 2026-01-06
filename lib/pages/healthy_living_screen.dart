@@ -1,8 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart' as launcher;
 import '../l10n/app_localizations.dart';
+import '../services/news_service.dart';
 
-class HealthyLivingScreen extends StatelessWidget {
+class HealthyLivingScreen extends StatefulWidget {
   const HealthyLivingScreen({super.key});
+
+  @override
+  State<HealthyLivingScreen> createState() => _HealthyLivingScreenState();
+}
+
+class _HealthyLivingScreenState extends State<HealthyLivingScreen> {
+  List<NewsArticle> _news = [];
+  bool _isLoadingNews = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNews();
+  }
+
+  Future<void> _loadNews() async {
+    setState(() => _isLoadingNews = true);
+    
+    try {
+      final news = await NewsService.getHealthNews(limit: 3);
+      setState(() {
+        _news = news;
+        _isLoadingNews = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingNews = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,24 +59,6 @@ class HealthyLivingScreen extends StatelessWidget {
       ),
     ];
 
-    final List<_News> news = [
-      _News(
-        title: localizations?.whoPhysicalActivityUpdate ?? 'WHO: Physical activity guidelines updated',
-        source: localizations?.currentHealthSource ?? 'Current Health',
-        minutes: 3,
-      ),
-      _News(
-        title: localizations?.smartWatchSleep ?? 'Sleep tracking with smartwatches: What to pay attention to?',
-        source: localizations?.techHealthSource ?? 'Tech Health',
-        minutes: 4,
-      ),
-      _News(
-        title: localizations?.omega3HeartHealth ?? 'New meta-analysis on Omega-3 and heart health',
-        source: localizations?.medicalWorldSource ?? 'Medical World',
-        minutes: 5,
-      ),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: Text(localizations?.healthyLivingTitle ?? 'Healthy Living'),
@@ -61,9 +74,54 @@ class HealthyLivingScreen extends StatelessWidget {
             const SizedBox(height: 8),
             ...tips.map((t) => _TipCard(tip: t)).toList(),
             const SizedBox(height: 16),
-            Text(localizations?.currentNews ?? 'Current News', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(localizations?.currentNews ?? 'Current News', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                if (_isLoadingNews)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _loadNews,
+                    tooltip: 'Yenile',
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
-            ...news.map((n) => _NewsTile(news: n, localizations: localizations!)).toList(),
+            if (_isLoadingNews)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_news.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Text(
+                    'Haber bulunamadı',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                ),
+              )
+            else
+              ..._news.map((article) {
+                return _NewsTile(
+                  news: _News(
+                    title: article.title,
+                    source: article.source,
+                    minutes: NewsService.estimateReadingTime(article.description ?? article.title),
+                    url: article.url,
+                  ),
+                  localizations: localizations!,
+                );
+              }).toList(),
           ],
         ),
       ),
@@ -123,6 +181,98 @@ class _NewsTile extends StatelessWidget {
   final _News news;
   final AppLocalizations localizations;
 
+  Future<void> _launchUrl(BuildContext context, String? url) async {
+    if (url == null || url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Bu haber için link bulunamadı. Haber kaynağından link alınamadı.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // URL'yi temizle ve düzelt
+    String cleanUrl = url.trim();
+    
+    // Eğer URL http/https ile başlamıyorsa ekle
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://$cleanUrl';
+    }
+
+    try {
+      print('Açılacak URL: $cleanUrl');
+      
+      // Platform channel hatasını önlemek için direkt launchUrlString kullan
+      // Bu metod daha stabil ve platform channel sorunlarını önler
+      final uri = Uri.parse(cleanUrl);
+      final launched = await launcher.launchUrl(
+        uri,
+        mode: launcher.LaunchMode.externalApplication,
+      );
+      
+      if (!launched) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Link açılamadı. Lütfen tekrar deneyin.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('URL açma hatası: $e');
+      
+      // Platform channel hatası varsa kullanıcıya URL'yi kopyala seçeneği sun
+      if (e.toString().contains('channel-error') || e.toString().contains('PlatformException')) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Link Açılamadı'),
+            content: Text('Link tarayıcıda açılamadı.\n\nURL: $cleanUrl'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // URL'yi panoya kopyala
+                  Clipboard.setData(ClipboardData(text: cleanUrl));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('URL panoya kopyalandı. Tarayıcınıza yapıştırabilirsiniz.'),
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                },
+                child: const Text('URL\'yi Kopyala'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Kapat'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  // Tekrar dene
+                  await Future.delayed(const Duration(milliseconds: 500));
+                  _launchUrl(context, cleanUrl);
+                },
+                child: const Text('Tekrar Dene'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Link açılamadı. Lütfen internet bağlantınızı kontrol edin.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -139,6 +289,7 @@ class _NewsTile extends StatelessWidget {
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () => _launchUrl(context, news.url),
       ),
     );
   }
@@ -154,5 +305,11 @@ class _News {
   final String title;
   final String source;
   final int minutes;
-  _News({required this.title, required this.source, required this.minutes});
+  final String? url;
+  _News({
+    required this.title,
+    required this.source,
+    required this.minutes,
+    this.url,
+  });
 }

@@ -507,4 +507,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String everyXHours(int hours) {
     return 'Каждые $hours часа';
   }
+
+  @override
+  String get noAlarmsYet =>
+      'Пока нет будильников. Немедленно добавьте лекарство!';
+
+  @override
+  String get allHistoryTitle => 'Вся история';
+
+  @override
+  String get historyNotFound => 'История не найдена';
 }

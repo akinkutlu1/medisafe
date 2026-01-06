@@ -168,6 +168,9 @@
       }
     }
   },
+  "noAlarmsYet": "No alarms yet. Add a medicine immediately!",
+  "allHistoryTitle": "All History",
+  "historyNotFound": "History not found",
   "emailAndPasswordEmpty": "Email and password fields cannot be empty",
   "loginError": "An error occurred during login",
   "userNotFound": "No user found with this email address",

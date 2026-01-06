@@ -501,4 +501,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String everyXHours(int hours) {
     return 'كل $hours ساعات';
   }
+
+  @override
+  String get noAlarmsYet => 'لا توجد منبهات بعد. أضف دواءً فوراً!';
+
+  @override
+  String get allHistoryTitle => 'كامل التاريخ';
+
+  @override
+  String get historyNotFound => 'لم يتم العثور على التاريخ';
 }

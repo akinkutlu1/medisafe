@@ -139,7 +139,7 @@ class _MedicineList extends StatelessWidget {
         final docs = snapshot.data?.docs ?? [];
         if (docs.isEmpty) {
           return Text(
-            'Henüz alarm yok. Hemen bir ilaç ekleyin!',
+            AppLocalizations.of(context)?.noAlarmsYet ?? 'No alarms yet. Add a medicine immediately!',
             style: TextStyle(color: Colors.grey.shade600),
           );
         }
@@ -267,16 +267,24 @@ class _MedicineCardState extends State<_MedicineCard> {
 
   Future<void> _ensureNotificationScheduled() async {
     final data = _currentData();
-    if (data['alarmOn'] != true) return;
+    if (data['alarmOn'] != true) {
+      debugPrint('⚠️ Alarm kapalı: ${data['name']}');
+      return;
+    }
 
     // firstReminder'ı direkt Firestore'dan oku
     final firstReminderTs = data['firstReminder'];
-      if (firstReminderTs == null) {
+    final now = DateTime.now();
+    
+    if (firstReminderTs == null) {
       // firstReminder yoksa hesapla
-      final nextReminder = _computeNextReminder(data);
-      if (nextReminder == null) return;
+      debugPrint('🔍 firstReminder yok, hesaplanıyor: ${data['name']}');
+      final nextReminder = _computeNextReminder(data, docRef: widget.doc.reference);
+      if (nextReminder == null) {
+        debugPrint('❌ Sonraki hatırlatma hesaplanamadı: ${data['name']}');
+        return;
+      }
 
-      final now = DateTime.now();
       if (nextReminder.isAfter(now)) {
         try {
           await NotificationService.instance.scheduleMedicineReminder(
@@ -288,17 +296,27 @@ class _MedicineCardState extends State<_MedicineCard> {
           );
           final localTime = nextReminder.toLocal();
           debugPrint('✅ Bildirim planlandı: ${data['name']} - Yerel: ${localTime.hour}:${localTime.minute.toString().padLeft(2, '0')}:${localTime.second.toString().padLeft(2, '0')}');
+          
+          // Firestore'u güncelle
+          await widget.doc.reference.update({
+            'firstReminder': Timestamp.fromDate(nextReminder),
+          });
         } catch (e) {
           debugPrint('❌ Bildirim planlama hatası: $e');
         }
+      } else {
+        debugPrint('⚠️ Hesaplanan zaman geçmişte: ${data['name']} - $nextReminder');
       }
     } else {
-      // firstReminder varsa onu kullan
+      // firstReminder varsa kontrol et
       final firstReminder = _parseTimestamp(firstReminderTs);
-      if (firstReminder == null) return;
+      if (firstReminder == null) {
+        debugPrint('⚠️ firstReminder parse edilemedi: ${data['name']}');
+        return;
+      }
 
-      final now = DateTime.now();
       if (firstReminder.isAfter(now)) {
+        // Gelecekteyse planla
         try {
           await NotificationService.instance.scheduleMedicineReminder(
             docPath: widget.doc.reference.path,
@@ -311,6 +329,30 @@ class _MedicineCardState extends State<_MedicineCard> {
           debugPrint('✅ Bildirim planlandı (firstReminder): ${data['name']} - Yerel: ${localTime.hour}:${localTime.minute.toString().padLeft(2, '0')}:${localTime.second.toString().padLeft(2, '0')}');
         } catch (e) {
           debugPrint('❌ Bildirim planlama hatası: $e');
+        }
+      } else {
+        // Geçmişteyse yeni bir zaman hesapla
+        debugPrint('⚠️ firstReminder geçmişte, yeniden hesaplanıyor: ${data['name']} - $firstReminder');
+        final nextReminder = _computeNextReminder(data, docRef: widget.doc.reference);
+        if (nextReminder != null && nextReminder.isAfter(now)) {
+          try {
+            await NotificationService.instance.scheduleMedicineReminder(
+              docPath: widget.doc.reference.path,
+              medicineName: data['name'] ?? 'İlaç',
+              at: nextReminder,
+              body: NotificationService.instance.reminderBody(data),
+              imageFileName: data['imageFileName'] as String?,
+            );
+            final localTime = nextReminder.toLocal();
+            debugPrint('✅ Yeni bildirim planlandı: ${data['name']} - Yerel: ${localTime.hour}:${localTime.minute.toString().padLeft(2, '0')}:${localTime.second.toString().padLeft(2, '0')}');
+            
+            // Firestore'u güncelle
+            await widget.doc.reference.update({
+              'firstReminder': Timestamp.fromDate(nextReminder),
+            });
+          } catch (e) {
+            debugPrint('❌ Bildirim planlama hatası: $e');
+          }
         }
       }
     }
@@ -346,7 +388,7 @@ class _MedicineCardState extends State<_MedicineCard> {
         });
         return;
       }
-      final next = _computeNextReminder(data);
+      final next = _computeNextReminder(data, docRef: widget.doc.reference);
       final now = DateTime.now();
       Duration? value;
 
@@ -518,7 +560,12 @@ class _MedicineCardState extends State<_MedicineCard> {
 
     DateTime? nextReminder;
     final String regimen = data['regimen'] ?? '';
-    if (regimen == 'Saatlik') {
+    final String regimenLower = regimen.toLowerCase();
+    final bool isHourly = regimenLower.contains('saatlik') || 
+                          regimenLower.contains('hourly') ||
+                          regimenLower == 'saatlik' ||
+                          regimenLower == 'hourly';
+    if (isHourly) {
       final intervalHoursValue = data['intervalHours'];
       // Test modu kontrolü (intervalHours null ise test modu)
       if (intervalHoursValue == null) {
@@ -604,15 +651,26 @@ class _MedicineCardState extends State<_MedicineCard> {
   }
 }
 
-DateTime? _computeNextReminder(Map<String, dynamic> data) {
+DateTime? _computeNextReminder(Map<String, dynamic> data, {DocumentReference? docRef}) {
   final String regimen = data['regimen'] as String? ?? '';
+  // Rejim kontrolü: yerelleştirilmiş değerleri kontrol et (Türkçe, İngilizce, vb.)
+  final String regimenLower = regimen.toLowerCase();
+  final bool isHourly = regimenLower.contains('saatlik') || 
+                        regimenLower.contains('hourly') ||
+                        regimenLower == 'saatlik' ||
+                        regimenLower == 'hourly';
+  final bool isMealBased = regimenLower.contains('öğün') || 
+                          regimenLower.contains('meal') ||
+                          regimenLower == 'öğünlere göre' ||
+                          regimenLower == 'meal-based';
+  
   final DateTime now = DateTime.now();
   final DateTime? endDate = _extractEndDate(data);
   if (endDate != null && now.isAfter(endDate)) {
     return null;
   }
 
-  if (regimen == 'Saatlik') {
+  if (isHourly) {
     final intervalHoursValue = data['intervalHours'];
 
     // Önce firstReminder'ı kontrol et (hem test hem normal mod için)
@@ -700,17 +758,54 @@ DateTime? _computeNextReminder(Map<String, dynamic> data) {
     return first;
   }
 
-  if (regimen == 'Öğünlere Göre') {
+  if (isMealBased) {
+    debugPrint('🍽️ Öğünlere göre rejim kontrol ediliyor: ${data['name']}');
+    
+    // Önce firstReminder'ı kontrol et
+    DateTime? first = _parseTimestamp(data['firstReminder']);
+    
+    // firstReminder varsa ve gelecekteyse direkt döndür
+    if (first != null && first.isAfter(now)) {
+      debugPrint('✅ firstReminder gelecekte: ${data['name']} - $first');
+      if (endDate != null && first.isAfter(endDate)) {
+        debugPrint('❌ firstReminder bitiş tarihinden sonra: ${data['name']}');
+        return null;
+      }
+      return first;
+    }
+    
+    // firstReminder yoksa veya geçmişteyse, bir sonraki öğün zamanını hesapla
     final startTs = data['startDate'];
     DateTime startDate = now;
     if (startTs is Timestamp) {
       final d = startTs.toDate();
       startDate = DateTime(d.year, d.month, d.day);
     }
+    debugPrint('📅 Başlangıç tarihi: $startDate');
+    
     final rawTimes = data['mealTimes'];
-    if (rawTimes is List) {
+    debugPrint('⏰ mealTimes: $rawTimes');
+    
+    if (rawTimes is List && rawTimes.isNotEmpty) {
       final times = rawTimes.map((e) => e.toString()).toList();
-      return _findNextMealReminder(times, startDate, now, endDate);
+      debugPrint('⏰ Parse edilmiş saatler: $times');
+      final nextMeal = _findNextMealReminder(times, startDate, now, endDate);
+      debugPrint('🍽️ Sonraki öğün zamanı: $nextMeal');
+      
+      // Eğer nextMeal bulunduysa ve firstReminder geçmişteyse, Firestore'u güncelle
+      if (nextMeal != null && (first == null || first.isBefore(now) || first.isAtSameMomentAs(now)) && docRef != null) {
+        debugPrint('🔄 firstReminder güncelleniyor: ${data['name']} - $nextMeal');
+        // Firestore'u arka planda güncelle (async, hata olursa devam et)
+        docRef.update({
+          'firstReminder': Timestamp.fromDate(nextMeal),
+        }).catchError((e) {
+          debugPrint('⚠️ firstReminder güncelleme hatası: $e');
+        });
+      }
+      
+      return nextMeal;
+    } else {
+      debugPrint('❌ mealTimes boş veya geçersiz: ${data['name']}');
     }
   }
 
@@ -723,7 +818,13 @@ DateTime? _findNextMealReminder(
   DateTime now,
   DateTime? endDate,
 ) {
-  if (times.isEmpty) return null;
+  debugPrint('🔍 _findNextMealReminder çağrıldı: times=$times, startDate=$startDate, now=$now, endDate=$endDate');
+  
+  if (times.isEmpty) {
+    debugPrint('❌ times boş');
+    return null;
+  }
+  
   final DateTime base = DateTime(startDate.year, startDate.month, startDate.day);
   final DateTime today = DateTime(now.year, now.month, now.day);
   int offsetStart = today.difference(base).inDays;
@@ -731,21 +832,37 @@ DateTime? _findNextMealReminder(
   final DateTime? endLimit = endDate;
   DateTime? candidate;
 
+  debugPrint('📅 base=$base, today=$today, offsetStart=$offsetStart');
+
   for (int offset = offsetStart; offset < offsetStart + 7; offset++) {
     final DateTime day = base.add(Duration(days: offset));
+    debugPrint('📆 Gün kontrol ediliyor: $day (offset=$offset)');
+    
     for (final entry in times) {
       final parsed = _parseTime(entry);
-      if (parsed == null) continue;
+      if (parsed == null) {
+        debugPrint('⚠️ Saat parse edilemedi: $entry');
+        continue;
+      }
       final DateTime dt = DateTime(day.year, day.month, day.day, parsed.hour, parsed.minute);
+      debugPrint('⏰ Kontrol ediliyor: $dt (entry=$entry, parsed=$parsed)');
+      
       if (dt.isAfter(now) && (endLimit == null || !dt.isAfter(endLimit))) {
         if (candidate == null || dt.isBefore(candidate)) {
           candidate = dt;
+          debugPrint('✅ Yeni aday bulundu: $candidate');
         }
+      } else {
+        debugPrint('❌ Zaman uygun değil: dt.isAfter(now)=${dt.isAfter(now)}, endLimit kontrol=${endLimit != null ? !dt.isAfter(endLimit) : "null"}');
       }
     }
-    if (candidate != null) break;
+    if (candidate != null) {
+      debugPrint('✅ En yakın öğün bulundu, döngü sonlandırılıyor: $candidate');
+      break;
+    }
   }
 
+  debugPrint('🍽️ Sonuç: $candidate');
   return candidate;
 }
 

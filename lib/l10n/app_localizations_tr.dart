@@ -505,4 +505,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String everyXHours(int hours) {
     return '$hours saatte bir';
   }
+
+  @override
+  String get noAlarmsYet => 'Henüz alarm yok. Hemen bir ilaç ekleyin!';
+
+  @override
+  String get allHistoryTitle => 'Tüm Geçmiş';
+
+  @override
+  String get historyNotFound => 'Geçmiş bulunamadı';
 }
